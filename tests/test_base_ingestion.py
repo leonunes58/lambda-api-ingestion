@@ -191,33 +191,31 @@ def test_prefix_customizado(s3):
 # ----------------------------------------------------------------------
 # Ingestão de exemplo: cotacao_dolar
 # ----------------------------------------------------------------------
-RESPOSTA_AWESOMEAPI = {
-    "USDBRL": {
-        "code": "USD",
-        "codein": "BRL",
-        "bid": "5.0627",
-        "ask": "5.0631",
-        "create_date": "2026-10-16 18:01:12",
-    }
-}
+RESPOSTA_BCB_SGS = [
+    {"data": "15/10/2026", "valor": "5.0521"},
+    {"data": "16/10/2026", "valor": "5.0826"},
+]
 
 
-def test_cotacao_extract_records_desembrulha_usdbrl():
+def test_cotacao_transform_converte_data_e_valor():
     ingestion = CotacaoDolar(make_config(), writer=make_writer(make_config(), FakeS3Client()))
 
-    assert ingestion.extract_records(RESPOSTA_AWESOMEAPI) == [RESPOSTA_AWESOMEAPI["USDBRL"]]
+    assert ingestion.transform(RESPOSTA_BCB_SGS) == [
+        {"data": "2026-10-15", "valor": 5.0521},
+        {"data": "2026-10-16", "valor": 5.0826},
+    ]
 
 
-def test_cotacao_run_grava_apenas_o_registro_interno(s3):
-    run_with(CotacaoDolar, RESPOSTA_AWESOMEAPI, s3)
+def test_cotacao_run_grava_um_registro_por_dia(s3):
+    summary = run_with(CotacaoDolar, RESPOSTA_BCB_SGS, s3)
 
-    gravado = json.loads(s3.calls[0]["Body"])
-    assert gravado["code"] == "USD"
-    assert "USDBRL" not in gravado
+    assert summary["records"] == 2
+    linhas = [json.loads(linha) for linha in s3.calls[0]["Body"].decode("utf-8").splitlines()]
+    assert linhas[-1] == {"data": "2026-10-16", "valor": 5.0826}
 
 
-def test_cotacao_resposta_sem_chave_esperada_falha(s3):
-    with pytest.raises(KeyError):
-        run_with(CotacaoDolar, {"EURBRL": {}}, s3)
+def test_cotacao_data_em_formato_inesperado_falha(s3):
+    with pytest.raises(ValueError):
+        run_with(CotacaoDolar, [{"data": "2026-10-16", "valor": "5.08"}], s3)
 
     assert s3.calls == []

@@ -1,14 +1,24 @@
-"""Ingestão da cotação USD/BRL (AwesomeAPI)."""
+"""Ingestão do dólar PTAX de venda (Banco Central, API SGS)."""
 
 from __future__ import annotations
 
-from typing import Any, List
+from datetime import datetime
+from typing import List
 
 from core.base_ingestion import BaseIngestion, Record
 
 
 class Ingestion(BaseIngestion):
-    """A API responde `{"USDBRL": {...}}`; o registro útil está dentro da chave."""
+    """A API já responde uma lista de `{"data": "dd/mm/aaaa", "valor": "x.xxxx"}`.
 
-    def extract_records(self, page: Any) -> List[Record]:
-        return [page["USDBRL"]]
+    O extract_records padrão serve; só o transform é sobrescrito para tipar os campos.
+    """
+
+    def transform(self, records: List[Record]) -> List[Record]:
+        return [
+            {
+                "data": datetime.strptime(r["data"], "%d/%m/%Y").date().isoformat(),
+                "valor": float(r["valor"]),
+            }
+            for r in records
+        ]

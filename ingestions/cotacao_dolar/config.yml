@@ -1,12 +1,12 @@
 name: cotacao_dolar
-description: Cotação USD/BRL
+description: Dólar PTAX venda (Banco Central, SGS série 1) - últimos 5 dias úteis
 api:
-  url: https://economia.awesomeapi.com.br/json/last/USD-BRL
+  url: https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados/ultimos/5?formato=json
   method: GET
 destination:
   # bucket: omitido de propósito, o Terraform preenche com o bucket raw do storage.tf
   # prefix: opcional, padrão = name
   partition: anomesdia # anomesdia | anomes
-schedule: "cron(0 12 * * ? *)"
+schedule: "cron(0 21 ? * MON-FRI *)" # dias úteis, 21h UTC (18h Brasília), após a PTAX do dia
 timeout: 30
 memory: 128
