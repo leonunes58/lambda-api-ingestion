@@ -27,7 +27,7 @@ INGESTIONS_DIR = Path(__file__).resolve().parent.parent / "ingestions"
 INGESTIONS = sorted(p.parent.name for p in INGESTIONS_DIR.glob("*/config.yml"))
 
 # Limites aceitos no config.yml (o module Terraform aplica as mesmas regras).
-NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,47}$")
+NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 SCHEDULE_PATTERN = re.compile(r"^(cron|rate)\(.+\)$")
 TIMEOUT_RANGE = (3, 300)
 MEMORY_RANGE = (128, 1024)
@@ -82,7 +82,7 @@ def test_contrato_config(name):
     if config.get("name") != name:
         erros.append(f"name deve ser igual ao nome da pasta ({name!r}), veio {config.get('name')!r}")
     if not NAME_PATTERN.match(name):
-        erros.append("nome da pasta deve ser snake_case minúsculo (vira módulo Python e nome da Lambda)")
+        erros.append("nome da pasta deve ser snake_case minúsculo com até 40 caracteres (vira módulo Python e nome da Lambda)")
 
     api = config.get("api") or {}
     if not str(api.get("url", "")).startswith("https://"):
