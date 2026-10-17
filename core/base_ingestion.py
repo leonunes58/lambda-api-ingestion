@@ -38,9 +38,12 @@ class BaseIngestion:
         self.config = config
         self.name: str = config["name"]
         self.api: Dict[str, Any] = config["api"]
+        destination = config["destination"]
         self.writer = writer or S3Writer(
-            bucket=config["destination"]["bucket"],
-            prefix=config["destination"]["prefix"],
+            bucket=destination["bucket"],
+            name=self.name,
+            partition=destination["partition"],
+            prefix=destination.get("prefix"),
         )
         self.logger = get_logger(f"ingestion.{self.name}")
         self.headers: Dict[str, str] = {"Accept": "application/json", "User-Agent": USER_AGENT}

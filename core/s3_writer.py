@@ -11,13 +11,23 @@ from core.log import get_logger
 logger = get_logger(__name__)
 
 
-def build_key(prefix: str, now: datetime) -> str:
-    """Monta `<prefix>/ano=YYYY/mes=MM/dia=DD/<timestamp_utc>.json`."""
-    return (
-        f"{prefix.strip('/')}/"
-        f"ano={now:%Y}/mes={now:%m}/dia={now:%d}/"
-        f"{now:%Y%m%dT%H%M%SZ}.json"
-    )
+# Granularidades de partição aceitas no YAML (destination.partition) -> formato da data.
+PARTITION_FORMATS = {
+    "anomesdia": "%Y%m%d",
+    "anomes": "%Y%m",
+}
+
+
+def build_key(prefix: str, name: str, partition: str, now: datetime) -> str:
+    """Monta `<prefix>/<partition>=<data>/<name>_<data>.json`.
+
+    O arquivo tem só a data no nome: reexecutar no mesmo período sobrescreve o
+    objeto (idempotente).
+    """
+    if partition not in PARTITION_FORMATS:
+        raise ValueError(f"partition inválida: {partition!r} (use {sorted(PARTITION_FORMATS)})")
+    date = now.strftime(PARTITION_FORMATS[partition])
+    return f"{prefix.strip('/')}/{partition}={date}/{name}_{date}.json"
 
 
 def to_json_lines(records: List[Dict[str, Any]]) -> bytes:
@@ -31,12 +41,16 @@ class S3Writer:
     def __init__(
         self,
         bucket: str,
-        prefix: str,
+        name: str,
+        partition: str,
+        prefix: Optional[str] = None,
         client: Optional[Any] = None,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         self.bucket = bucket
-        self.prefix = prefix
+        self.name = name
+        self.partition = partition
+        self.prefix = prefix or name
         self._client = client
         self._clock = clock
 
@@ -51,7 +65,7 @@ class S3Writer:
 
     def write(self, records: List[Dict[str, Any]]) -> str:
         """Grava os registros e retorna a key do objeto criado."""
-        key = build_key(self.prefix, self._clock())
+        key = build_key(self.prefix, self.name, self.partition, self._clock())
         self.client.put_object(
             Bucket=self.bucket,
             Key=key,

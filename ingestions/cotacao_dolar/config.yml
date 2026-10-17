@@ -5,7 +5,8 @@ api:
   method: GET
 destination:
   # bucket: omitido de propósito, o Terraform preenche com o bucket raw do storage.tf
-  prefix: cotacao_dolar
+  # prefix: opcional, padrão = name
+  partition: anomesdia # anomesdia | anomes
 schedule: "cron(0 12 * * ? *)"
 timeout: 30
 memory: 128
