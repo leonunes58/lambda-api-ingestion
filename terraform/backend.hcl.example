@@ -1,0 +1,2 @@
+# Copie para backend.hcl (ignorado pelo Git) e troque pelo seu account ID.
+bucket = "leo-tfstate-<ACCOUNT_ID>"

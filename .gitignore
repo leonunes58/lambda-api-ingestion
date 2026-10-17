@@ -24,3 +24,6 @@ __pycache__/
 
 # Zips gerados pelo archive_file
 .build/
+
+# Config do backend com account ID (use backend.hcl.example como modelo)
+backend.hcl
