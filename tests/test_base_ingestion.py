@@ -5,9 +5,7 @@ HTTP e S3 são substituídos por dublês: nenhum teste acessa a rede ou a AWS.
 
 from __future__ import annotations
 
-import io
 import json
-from datetime import datetime, timezone
 from typing import Any, Dict, List
 from unittest.mock import patch
 
@@ -16,32 +14,12 @@ import pytest
 from core.base_ingestion import BaseIngestion, EmptyResponseError, ValidationError
 from core.s3_writer import S3Writer, build_key
 from ingestions.cotacao_dolar.ingestion import Ingestion as CotacaoDolar
-
-FIXED_NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+from tests.doubles import FIXED_NOW, URLOPEN_TARGET, FakeS3Client, fake_urlopen
 
 
 # ----------------------------------------------------------------------
-# Dublês e fixtures
+# Fixtures
 # ----------------------------------------------------------------------
-class FakeS3Client:
-    """Substitui o cliente boto3: guarda as chamadas a put_object."""
-
-    def __init__(self) -> None:
-        self.calls: List[Dict[str, Any]] = []
-
-    def put_object(self, **kwargs: Any) -> None:
-        self.calls.append(kwargs)
-
-
-def fake_urlopen(payload: Any):
-    """Cria um substituto de urllib.request.urlopen que devolve `payload` como JSON."""
-
-    def _urlopen(request, timeout):  # mesma assinatura usada em BaseIngestion._request
-        return io.BytesIO(json.dumps(payload).encode("utf-8"))  # BytesIO já é context manager
-
-    return _urlopen
-
-
 def make_config(partition: str = "anomesdia", **destination: Any) -> Dict[str, Any]:
     return {
         "name": "teste",
@@ -70,7 +48,7 @@ def make_writer(config: Dict[str, Any], s3: FakeS3Client) -> S3Writer:
 def run_with(ingestion_cls, payload: Any, s3: FakeS3Client, config: Dict[str, Any] = None):
     config = config or make_config()
     ingestion = ingestion_cls(config, writer=make_writer(config, s3))
-    with patch("core.base_ingestion.urllib.request.urlopen", fake_urlopen(payload)):
+    with patch(URLOPEN_TARGET, fake_urlopen(payload)):
         return ingestion.run()
 
 
