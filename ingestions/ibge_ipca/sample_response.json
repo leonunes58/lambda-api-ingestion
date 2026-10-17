@@ -1,0 +1,62 @@
+[
+    {
+        "id": "63",
+        "variavel": "IPCA - Variação mensal",
+        "unidade": "%",
+        "resultados": [
+            {
+                "classificacoes": [],
+                "series": [
+                    {
+                        "localidade": {
+                            "id": "1",
+                            "nivel": {
+                                "id": "N1",
+                                "nome": "Brasil"
+                            },
+                            "nome": "Brasil"
+                        },
+                        "serie": {
+                            "202604": "0.67",
+                            "202605": "0.58",
+                            "202606": "0.16",
+                            "202607": "0.07",
+                            "202608": "-0.32",
+                            "202609": "0.82"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "2266",
+        "variavel": "IPCA - Número-índice (base: dezembro de 1993 = 100)",
+        "unidade": "Número-índice",
+        "resultados": [
+            {
+                "classificacoes": [],
+                "series": [
+                    {
+                        "localidade": {
+                            "id": "1",
+                            "nivel": {
+                                "id": "N1",
+                                "nome": "Brasil"
+                            },
+                            "nome": "Brasil"
+                        },
+                        "serie": {
+                            "202604": "7596.0900000000000",
+                            "202605": "7640.1500000000000",
+                            "202606": "7652.3700000000000",
+                            "202607": "7657.7300000000000",
+                            "202608": "7633.2300000000000",
+                            "202609": "7695.8200000000000"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+]

@@ -1,0 +1,10 @@
+name: ibge_ipca
+description: IPCA - variação mensal e número-índice (IBGE, agregado 1737)
+api:
+  url: https://servicodados.ibge.gov.br/api/v3/agregados/1737/periodos/-6/variaveis/63|2266?localidades=N1[all]
+  method: GET
+destination:
+  partition: anomes
+schedule: "cron(0 12 15 * ? *)" # dia 15 de cada mês, 12h UTC (9h Brasília)
+timeout: 30
+memory: 128
