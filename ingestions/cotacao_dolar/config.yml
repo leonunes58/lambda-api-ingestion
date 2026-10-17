@@ -1,0 +1,11 @@
+name: cotacao_dolar
+description: Cotação USD/BRL
+api:
+  url: https://economia.awesomeapi.com.br/json/last/USD-BRL
+  method: GET
+destination:
+  # bucket: omitido de propósito, o Terraform preenche com o bucket raw do storage.tf
+  prefix: cotacao_dolar
+schedule: "cron(0 12 * * ? *)"
+timeout: 30
+memory: 128
