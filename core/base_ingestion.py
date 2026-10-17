@@ -6,6 +6,7 @@ apenas os ganchos de que precisam. A gravação no S3 é sempre feita aqui.
 
 from __future__ import annotations
 
+import gzip
 import json
 import urllib.request
 from typing import Any, Dict, Iterable, List, Optional
@@ -46,7 +47,11 @@ class BaseIngestion:
             prefix=destination.get("prefix"),
         )
         self.logger = get_logger(f"ingestion.{self.name}")
-        self.headers: Dict[str, str] = {"Accept": "application/json", "User-Agent": USER_AGENT}
+        self.headers: Dict[str, str] = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "User-Agent": USER_AGENT,
+        }
 
     # ------------------------------------------------------------------
     # Método template: NÃO sobrescrever.
@@ -110,4 +115,8 @@ class BaseIngestion:
         request = urllib.request.Request(url, method=method, headers=self.headers)
         self.logger.info("requisicao http", extra={"method": method, "url": url})
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
-            return json.loads(response.read().decode("utf-8"))
+            body = response.read()
+            # urllib não descomprime sozinho; algumas APIs (ex.: IBGE) mandam gzip mesmo sem pedir.
+            if response.headers.get("Content-Encoding", "").lower() == "gzip":
+                body = gzip.decompress(body)
+            return json.loads(body.decode("utf-8"))

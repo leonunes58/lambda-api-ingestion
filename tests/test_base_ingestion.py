@@ -117,6 +117,17 @@ def test_transform_altera_o_que_e_gravado(s3):
     assert gravado == {"id": 1, "origem": "api"}
 
 
+def test_resposta_gzip_e_descomprimida(s3):
+    config = make_config()
+    ingestion = BaseIngestion(config, writer=make_writer(config, s3))
+
+    with patch(URLOPEN_TARGET, fake_urlopen([{"id": 1}], gzipped=True)):
+        summary = ingestion.run()
+
+    assert summary["records"] == 1
+    assert json.loads(s3.calls[0]["Body"]) == {"id": 1}
+
+
 def test_resposta_vazia_levanta_erro_e_nao_grava(s3):
     with pytest.raises(EmptyResponseError):
         run_with(BaseIngestion, [], s3)

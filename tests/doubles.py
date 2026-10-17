@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import gzip
 import io
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 FIXED_NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
 URLOPEN_TARGET = "core.base_ingestion.urllib.request.urlopen"
@@ -21,10 +22,22 @@ class FakeS3Client:
         self.calls.append(kwargs)
 
 
-def fake_urlopen(payload: Any):
+class FakeResponse(io.BytesIO):
+    """Resposta HTTP mínima: corpo em bytes + headers (BytesIO já é context manager)."""
+
+    def __init__(self, body: bytes, headers: Optional[Dict[str, str]] = None) -> None:
+        super().__init__(body)
+        self.headers = headers or {}
+
+
+def fake_urlopen(payload: Any, gzipped: bool = False):
     """Cria um substituto de urllib.request.urlopen que devolve `payload` como JSON."""
+    body = json.dumps(payload).encode("utf-8")
+    headers = {}
+    if gzipped:
+        body, headers = gzip.compress(body), {"Content-Encoding": "gzip"}
 
     def _urlopen(request, timeout):  # mesma assinatura usada em BaseIngestion._request
-        return io.BytesIO(json.dumps(payload).encode("utf-8"))  # BytesIO já é context manager
+        return FakeResponse(body, headers)
 
     return _urlopen
