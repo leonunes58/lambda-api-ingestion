@@ -4,6 +4,7 @@
 *.tfstate.*
 crash.log
 *.tfplan
+tfplan
 
 # Artefatos de empacotamento (gerados pelo archive_file)
 *.zip
