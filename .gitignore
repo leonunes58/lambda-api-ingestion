@@ -1,0 +1,23 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+
+# Artefatos de empacotamento (gerados pelo archive_file)
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Segredos e ambiente local
+.env
+
+# Sistema operacional / editores
+.DS_Store
+.idea/
+.vscode/
