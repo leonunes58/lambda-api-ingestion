@@ -1,0 +1,2 @@
+# Dependências apenas de desenvolvimento (a Lambda usa só a biblioteca padrão + boto3 do runtime)
+pytest>=8,<9
