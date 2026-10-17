@@ -36,7 +36,10 @@ FAKE_BUCKET = "bucket-teste"
 
 def load_config(name: str) -> Dict[str, Any]:
     """Lê o config.yml e simula o que o Terraform faz: injeta o bucket de destino."""
-    config = yaml.safe_load((INGESTIONS_DIR / name / "config.yml").read_text(encoding="utf-8"))
+    path = INGESTIONS_DIR / name / "config.yml"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(config, dict):
+        pytest.fail(f"{path.relative_to(INGESTIONS_DIR.parent)} está vazio ou não é um mapa YAML (chave: valor)")
     config.setdefault("destination", {})["bucket"] = FAKE_BUCKET
     return config
 
