@@ -266,11 +266,13 @@ lambda-api-ingestion/
 - **Menor privilégio:** cada Lambda só pode `s3:PutObject` em `<bucket>/<prefix>/*` e escrever no próprio log group. A role do Scheduler tem condição `aws:SourceAccount`, contra o problema do "confused deputy".
 - **`for_each` em vez de `count`:** cada Lambda é identificada pelo nome da pasta, então remover uma ingestão não recria as outras.
 - **arm64 (Graviton):** mais barato, e o código não tem binários nativos.
+- **Claim `sub` do OIDC pode incluir IDs imutáveis:** o GitHub pode emitir o `sub` no formato `repo:<dono>@<owner_id>/<repo>@<repo_id>:...` em vez do clássico `repo:<dono>/<repo>:...`, dependendo da configuração de *immutable subject claims* do repositório (`gh api repos/<repo>/actions/oidc/customization/sub`). A trust policy da role tem que casar com o formato real — isso só ficou claro ao rodar o workflow de verdade e cruzar o `AccessDenied` com o CloudTrail.
+- **Falta permissions boundary na role de apply:** `github-lambda-api-ingestion-apply` (em `bootstrap/`) tem `iam:*` sobre roles com prefixo `api-ingestion-*`, incluindo `iam:CreateRole` e `iam:PutRolePolicy`. Nada impede, hoje, que um `apply` malicioso crie uma role com esse prefixo e anexe a ela permissões maiores que as deste projeto. Uma *permissions boundary* IAM fecharia essa brecha, limitando o teto de qualquer role criada por esse apply independente da policy que ela receber. Não implementada aqui (projeto de estudo); seria o próximo passo de segurança numa conta real.
 
 ## Roadmap
 
 - [x] **Fase 1: MVP.** Core com Template Method, uma Lambda por YAML via module + `for_each`, testes de contrato por ingestão.
 - [ ] **Fase 2: autenticação e paginação.** `api_key`, `bearer` e `oauth2`; paginação por `page`, `offset` e `cursor`, como tipos prontos no core e escolhidos no YAML.
 - [ ] **Fase 3: validação e mais ingestões.** Validação de schema com pydantic (via Lambda Layer) e novas ingestões.
-- [ ] **Fase 4: CI/CD.** GitHub Actions com `plan` no pull request e `apply` no merge para a `main`, autenticando na AWS via OIDC (sem chaves armazenadas).
+- [x] **Fase 4: CI/CD.** GitHub Actions com `plan` no pull request (comentado no PR) e `apply` no merge para a `main`, autenticando na AWS via OIDC (sem chaves armazenadas). Bootstrap manual (`bootstrap/`) cria o identity provider e as roles de least-privilege.
 - [ ] **Fase 5: produtividade e operação.** Script de scaffold para criar uma nova ingestão e alertas de falha.
