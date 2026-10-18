@@ -1,0 +1,152 @@
+name: Terraform
+
+# pull_request -> só plan, comentado no PR (role de leitura).
+# push na main -> plan + apply (role com permissão de escrita).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write # comentar o plan no PR
+  id-token: write       # emitir o token OIDC que a AWS troca por credenciais
+
+env:
+  TERRAFORM_VERSION: "1.16.6" # mesma versão usada localmente
+  AWS_REGION: "us-east-1"
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # cancela o plan anterior do mesmo PR se chegar um push novo: é só leitura, sem risco.
+    concurrency:
+      group: terraform-plan-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - run: terraform fmt -check -recursive
+        working-directory: terraform
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: terraform
+
+      - run: terraform validate
+        working-directory: terraform
+
+      - name: Terraform plan
+        id: plan
+        working-directory: terraform
+        continue-on-error: true
+        run: |
+          terraform plan -no-color -out=tfplan | tee plan_output.txt
+          echo "exitcode=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Comentar o plan no PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- terraform-plan -->";
+            const maxBody = 60000; // limite de comentário do GitHub é ~65536 caracteres
+
+            let output = fs.readFileSync("terraform/plan_output.txt", "utf8");
+            if (output.length > maxBody) {
+              output = output.slice(-maxBody);
+              output = "(... saída truncada, veja o log completo na aba Actions ...)\n" + output;
+            }
+
+            const status = "${{ steps.plan.outcome }}" === "success" ? "✅ sucesso" : "❌ falhou";
+            const body = [
+              marker,
+              `### Terraform Plan — ${status}`,
+              "<details><summary>Mostrar plan</summary>",
+              "",
+              "```",
+              output,
+              "```",
+              "</details>",
+            ].join("\n");
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(
+              (c) => c.body.includes(marker) && c.user.type === "Bot"
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Falhar o job se o plan deu erro
+        if: steps.plan.outputs.exitcode != '0'
+        run: exit 1
+
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # nunca cancela um apply em andamento: enfileira o próximo em vez de interromper.
+    concurrency:
+      group: terraform-apply-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+        working-directory: terraform
+
+      - run: terraform plan -no-color -out=tfplan
+        working-directory: terraform
+
+      - run: terraform apply -no-color -auto-approve tfplan
+        working-directory: terraform
